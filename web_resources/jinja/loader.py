@@ -28,24 +28,35 @@ def setup_routes(app):
     # index page
     @routes.view('/')
     class WebRoot(web.View):
-        @aiohttp_jinja2.template('index.html')
         async def get(self):
-            if ('AUTH' in self.request.cookies) and ('USER' in self.request.cookies):
-                cookies = dict(self.request.cookies)
-                cookies['USER'] = cookies['USER'].lower()
-                schema = {
-                    'USER': {'type': 'string','maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
-                    'AUTH': {'type': 'string', 'maxlength': 64, 'minlength': 64}
-                }
-                v = cerberus.Validator(schema)
-                if v.validate(cookies) and \
-                    not set(cookies['AUTH']).difference(ascii_letters + digits) and \
-                    not set(cookies['USER']).difference(ascii_letters + digits):
-                    if await app['db'].verify_cookie(cookies['AUTH'], cookies['USER']):
-                        return {
-                            'user': cookies['USER'],
-                            'page': 'INDEX'
-                        }
+            r = await validate_user_cookie(app, self.request)
+            match(r):
+                case 'bad cookies' | 'invalid user':
+                    context = {
+                        'index': True,
+                        'msg': 'Please relogin',
+                        'page': 'INDEX'
+                    }
+                    resp = aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+                    resp.set_cookie(name = 'AUTH', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+                    resp.set_cookie(name = 'USER', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+                    resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
+                    resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
+                    return resp
+                case 'guest':
+                    context = {
+                        'index': True,
+                        'page': 'INDEX'
+                    }
+                    return aiohttp_jinja2.render_template('index.html', request = self.request, context = context)
+                case _:
+                    context = {
+                        'index': True,
+                        'page': 'INDEX',
+                        'user': r['user']
+                    }
+                    return aiohttp_jinja2.render_template('index.html', request = self.request, context = context)
+
 
 
     # login api
@@ -64,7 +75,7 @@ def setup_routes(app):
                     samesite = "Strict"
                 )
                 resp.set_cookie(
-                    'USER', user['cookie'], 
+                    'USER', user['user'], 
                     domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], 
                     samesite = "Strict"
                 )
@@ -552,6 +563,7 @@ async def validate_user_cookie(app, request):
 
 async def verify_auth(app, request):
     to_lower = lambda user: user.lower()
+    to_valid_path = lambda path: '/' if path in ['/login', '/download', '/logout', '/upload', '/register'] else path
     schema = {
         'user': {
             'type': 'string',
@@ -572,6 +584,7 @@ async def verify_auth(app, request):
         'from': {
             'type': 'string',
             'required': False,
+            'coerce': (str, to_valid_path),
             'allowed': ['/files', '/upload', '/']
         }
     }
@@ -603,7 +616,7 @@ async def verify_auth(app, request):
             logging.log(level = 9001, msg = "Failed login attempt by ip address " + request.headers['X-Real-IP'] + " for user " + data['user'])
             return None
     else:
-        logging.log(level = 9001, msg = "Login failed validation requirements from ip address " + request.headers['X-Real-IP'] + " Errors: " + v.errors + " Data: " + data)
+        logging.log(level = 9001, msg = "Login failed validation requirements from ip address " + request.headers['X-Real-IP'] + " Errors: " + json.dumps(v.errors)  + " Data: " + json.dumps(data))
         return None
         
 async def parse_request(params):
