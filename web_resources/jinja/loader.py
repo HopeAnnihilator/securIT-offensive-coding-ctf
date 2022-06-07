@@ -1,3 +1,4 @@
+from fileinput import filename
 from aiohttp import request, web, MultipartReader
 import aiohttp_jinja2
 import urllib
@@ -236,9 +237,11 @@ def setup_routes(app):
                 randomFilename = token_hex(32)
                 if not os.path.exists(os.path.join('web_resources', 'files', fileinfo['owner'].lower(), randomFilename)):
                     fileinfo['location'] = os.path.join('web_resources', 'files', fileinfo['owner'].lower(), randomFilename)
+                    fileinfo['uid'] = randomFilename
                     break
 
             fileinfo['size'] = 0
+            
             with open(fileinfo['location'], 'wb+') as f:
                 while True:
                     chunk = await field.read_chunk(size = 8192)
@@ -261,7 +264,7 @@ def setup_routes(app):
                 return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
             
             fileinfo['type'] = magic.from_buffer(open(fileinfo['location'], 'rb').read(8192), mime = True)
-            if not((fileinfo['type'] == 'application/pdf') or (fileinfo['type'].startswith('text'))):
+            if not((fileinfo['type'] in ['application/pdf', 'application/json']) or (fileinfo['type'].startswith('text'))):
                 await app['db'].add_timeout(self.request.headers['X-Real-IP'], time() + 300, 'upload')
                 logging.log(level = 9001, msg = 'Invalid file type upload attempt failed by ip address: ' + self.request.headers['X-Real-IP'] + ' filetype: ' + fileinfo['type'])
                 try:
@@ -310,6 +313,7 @@ def setup_routes(app):
                 logging.log(level = 9001, msg = 'File uploaded successfully by ip address: ' + self.request.headers['X-Real-IP'])
                 return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
 
+
     # login api
     @routes.view('/files')
     class WebViewer(web.View):
@@ -347,22 +351,61 @@ def setup_routes(app):
                     'page': 'FILES',
                     'files': await app['db'].user_files(None, 'Guest')
                 }
-    # @routes.view('/download')
-    # class WebViewer(web.View)
-    #     async def get(self):
-    #        if self.request.has_body:
-    #             check = await check_timeouts(app, self.request.headers['X-Real-IP'], ['download'])
-    #             if check:
-    #                 return aiohttp_jinja2.render_template('message.html', request = self.request, context = check)
-    #             await app['db'].log_request(self.request.headers['X-Real-IP'], {'time': time(), 'action': 'download'})
+
+    @routes.view('/download')
+    class WebDownloader(web.View):
+        async def get(self):
                 
-    #             try:
-    #                 data = dict(urllib.parse.parse_qsl(await self.request.text(), max_num_fields = 2, strict_parsing = True))
-    #             except ValueError:
-    #                 logging.log(level = 9001, msg = "Attack Detected at /register: " + await self.request.text())
-    #                 return web.Response(text = "Nope", status = 500)
+            check = await check_timeouts(app, self.request.headers['X-Real-IP'], ['download'])
+            if check:
+                return aiohttp_jinja2.render_template('message.html', request = self.request, context = check)
+            await app['db'].log_request(self.request.headers['X-Real-IP'], {'time': time(), 'action': 'download'})
+            try:
+                data = dict(urllib.parse.parse_qs(str(self.request.url)), max_num_fields = 2, strict_parsing = True)
+            except ValueError: 
+                try:
+                    data = dict(urllib.parse.parse_qsl(await self.request.text(), max_num_fields = 2, strict_parsing = True))
+                except ValueError:
+                    logging.log(level = 9001, msg = "Bad file download attempt by ip: " + self.request.headers['X-Real-IP'] + " request: " + await self.request.text() + "headers: " + "")
+                    return web.Response(text = "Nope", status = 500)
+            print(data, flush = True)
+            data['filename'] = data[str(self.request.url).split('=')[0]][0]
+            if not set(data['filename']).difference(ascii_letters + digits + '.') and data['filename'] and (len(data['filename']) < 256):
+                if ('AUTH' in self.request.cookies) and ('USER' in self.request.cookies):
+                    cookies = dict(self.request.cookies)
+                    cookies['USER'] = cookies['USER'].lower()
+                    schema = {
+                        'USER': {'type': 'string','maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
+                        'AUTH': {'type': 'string', 'maxlength': 64, 'minlength': 64}
+                    }
+                    v = cerberus.Validator(schema)
+                    if v.validate(cookies) and \
+                        not set(cookies['AUTH']).difference(ascii_letters + digits) and \
+                        not set(cookies['USER']).difference(ascii_letters + digits):
+                        if await app['db'].verify_cookie(cookies['AUTH'], cookies['USER']):
+                            fileinfo = await app['db'].get_file_info(cookies['AUTH'], cookies['USER'], data['uid'][0])  
+                            # print(data, flush = True)
+                            # print(fileinfo, flush =  True)
+                            return web.FileResponse(path = fileinfo['location'], chunk_size = 8192, headers = {'Content-Disposition': "attachment; filename=" + fileinfo['filename']})
+                            #response = web.StreamResponse(content_type = 'attachment', headers = 'filename=' + fileinfo['filename'])
+                            #await response.prepare()
+                            #file = open(fileinfo['location'], 'rb', buffering = 8192)
+                            #for chunk in file:
+                            #    if chunk:
+                            #        await response.write(chunk)
+                            #return response.write_eof()
+                            
+                    else:
+                        return web.Response(text = "Failed")
+                else:
+                    return web.Response(text = "Failed")
+            else:
+                return web.Response(text = "Failed")
 
 
+ 
+                                
+               
 
     setup_static_routes(app)
     return app.add_routes(routes)
