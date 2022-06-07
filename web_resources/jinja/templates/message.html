@@ -1,6 +1,12 @@
+{% if index %}
 {% extends "index.html" %}
+{% elif viewer %}
+{% extends "viewer.html" %}
+{% else %}
+{% extends "index.html" %}
+{% endif %}
 
-{% block overIndex %}
+{% block top %}
 {% if msg %}
 <div><p></p>{{ msg }}</div>
 {% endif %}

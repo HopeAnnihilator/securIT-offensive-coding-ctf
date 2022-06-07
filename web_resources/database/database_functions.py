@@ -45,15 +45,11 @@ class mongodb:
 
     async def verify_cookie(self, cookie, user):
         if await self.check_user_exists(user):
-            return len([i for i in self.client['users'][user.lower()].find({'cookie': cookie})]) > 0
-        else:
-            return False
-    
+            return self.client['users'][user.lower()].find_one({'cookie': cookie})
+
     async def validate_pass(self, user, password):
         if await self.check_user_exists(user):
             return self.client['users'][user.lower()].find_one({'pass': password})
-        else:
-            return None
         
     async def user_files(self, cookie, user):
         if await self.check_user_exists(user) and (user != 'Guest'):
@@ -65,12 +61,11 @@ class mongodb:
     
     async def add_file_user(self, cookie, user, data):
         if await self.check_user_exists(user) and (user != 'Guest'):
-            new = self.client['users'][user.lower()].find_one({'cookie': cookie})
-            new['files'].append(data)
-            self.client['users'][user.lower()].replace_one({'cookie': cookie}, new)
-        elif (user == 'Guest'):
-            self.client['users'][user.lower()].insert_one(data)
-
+            if await self.verify_cookie(cookie, user):
+                self.client['users'][user.lower()].insert_one({data})
+        elif user == 'Guest':
+            self.client['users'][user.lower()].insert_one({data})
+            
     async def log_request(self, ipAdd, data):
         self.client['logs'][strftime('%b-%d-%Y-', gmtime()) + ipAdd].insert_one(data)
 

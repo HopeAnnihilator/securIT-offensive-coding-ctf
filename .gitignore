@@ -1,0 +1,6 @@
+logs/
+files/
+mongodb/
+proxy/conf.d/
+proxy/certs/
+proxy/vhost.d/

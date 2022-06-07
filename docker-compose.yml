@@ -33,6 +33,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: isItCheatingToReadThis
     volumes:
       - ./mongodb:/data/db
+    ports:
+      - 27017:27017
   
   webapp:
     build: .

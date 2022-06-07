@@ -16,8 +16,9 @@
       Logged in as {{ user }}!!!
       <button onclick="logout()">Logout</a>
       {% else %}
-      <input type="username" name="user" placeholder="username" size="20" required>
-      <input type="password" name="pass" size="20" required>
+      <input type="username" name="user" placeholder="username" id="user" size="20" required>
+      <input type="password" name="pass" placeholder="password" id="pass" size="20" required>
+      <input type="hidden" name="from" id="from">
       <button onclick="login()" type="button">Login</a>
       <button onclick="register()" type="button">Register</a> 
       {% endif %}
@@ -26,18 +27,21 @@
         function login() {
           if (valid()) {
             form = document.getElementById('creds');
+            document.getElementById('from').value = document.location.pathname;
             form.action = 'login';
             form.submit();
           }
         }
         function logout() {
           form = document.getElementById('creds');
+          document.getElementById('from').value = document.location.pathname;
           form.action = 'logout';
           form.submit();
         }
         function register() {
           if (valid()) {
             form=document.getElementById('creds');
+            document.getElementById('from').value = document.location.pathname;
             form.action='register';
             form.submit();
           }

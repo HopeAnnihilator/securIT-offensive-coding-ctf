@@ -1,5 +1,4 @@
-from fileinput import filename
-from aiohttp import request, web, MultipartReader
+from aiohttp import web
 import aiohttp_jinja2
 import urllib
 import cerberus
@@ -14,6 +13,7 @@ import os
 import magic
 from base64 import urlsafe_b64encode
 import numpy as np
+import json
 
 logging.basicConfig(
     level = logging.WARNING,
@@ -54,36 +54,68 @@ def setup_routes(app):
         async def get(self):
             return web.HTTPFound('/')
         async def post(self):
-            # if self.request.has_body and ('AUTH' not in self.request.cookies) and ('USER' not in self.request.cookies):
-            if self.request.has_body:
-                check = await check_timeouts(app, self.request.headers['X-Real-IP'], ['login'])
-                if check:
-                    return aiohttp_jinja2.render_template('message.html', request = self.request, context = check)
-                await app['db'].log_request(self.request.headers['X-Real-IP'], {'time': time(), 'action': 'login'})
-
-                try:
-                    data = dict(urllib.parse.parse_qsl(await self.request.text(), max_num_fields = 2, strict_parsing = True))
-                except ValueError:
-                    logging.log('Failed login attempt by ip address: ' + self.request.headers['X-Real-IP'])
-                    return web.Response(text = "Nope", status = 500)
-                schemaAuth = {
-                    'user': {'type': 'string', 'maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
-                    'pass': {'type': 'string', 'maxlength': 32, 'minlength': 4}
+            arr = await(verify_auth(app, self.request))
+            if arr:
+                resp = web.HTTPFound(arr.pop())
+                user = arr.pop()
+                resp.set_cookie(
+                    'AUTH', user['cookie'],
+                    domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], 
+                    samesite = "Strict"
+                )
+                resp.set_cookie(
+                    'USER', user['cookie'], 
+                    domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], 
+                    samesite = "Strict"
+                )
+                return resp
+            else:
+                context = {
+                    'index': True,
+                    'msg': 'Failed login attempt, much bad',
+                    'page': 'LOGIN FAILED'
                 }
-                user = data['user'].lower()
-                v = cerberus.Validator(schemaAuth)
-                if v.validate(data) and \
-                not set(data['pass']).difference(ascii_letters + digits) and \
-                not set(user).difference(ascii_letters + digits):
-                    userInfo = await app['db'].validate_pass(data['user'], sha256((data['pass'] + 'UWUSALT').encode()).hexdigest())
-                    if userInfo: 
-                        response = web.HTTPFound('/')
-                        response.set_cookie('AUTH', userInfo['cookie'], domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], samesite = "Strict")
-                        response.set_cookie('USER', userInfo['user'], domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], samesite = "Strict")
-                        return response
-                else:
-                    logging.log('Failed login attempt by ip address: ' + self.request.headers['X-Real-IP'])
-                    return web.Response(text = "Nope", status = 500)
+                return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+
+
+                # check = await check_timeouts(app, self.request.headers['X-Real-IP'], ['login'])
+                # if check:
+                #     return aiohttp_jinja2.render_template('message.html', request = self.request, context = check)
+                # await app['db'].log_request(self.request.headers['X-Real-IP'], {'time': time(), 'action': 'login'})
+
+                    
+            # print(self.request.headers, flush = True)
+            # print(await self.request.text(), flush = True)
+            # # if self.request.has_body and ('AUTH' not in self.request.cookies) and ('USER' not in self.request.cookies):
+            # if self.request.has_body:
+            #     check = await check_timeouts(app, self.request.headers['X-Real-IP'], ['login'])
+            #     if check:
+            #         return aiohttp_jinja2.render_template('message.html', request = self.request, context = check)
+            #     await app['db'].log_request(self.request.headers['X-Real-IP'], {'time': time(), 'action': 'login'})
+
+            #     try:
+            #         data = dict(urllib.parse.parse_qsl(await self.request.text(), max_num_fields = 2, strict_parsing = True))
+            #     except ValueError:
+            #         logging.log('Failed login attempt by ip address: ' + self.request.headers['X-Real-IP'])
+            #         return web.Response(text = "Nope", status = 500)
+            #     schemaAuth = {
+            #         'user': {'type': 'string', 'maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
+            #         'pass': {'type': 'string', 'maxlength': 32, 'minlength': 4}
+            #     }
+            #     user = data['user'].lower()
+            #     v = cerberus.Validator(schemaAuth)
+            #     if v.validate(data) and \
+            #     not set(data['pass']).difference(ascii_letters + digits) and \
+            #     not set(user).difference(ascii_letters + digits):
+            #         userInfo = await app['db'].validate_pass(data['user'], sha256((data['pass'] + 'UWUSALT').encode()).hexdigest())
+            #         if userInfo: 
+            #             response = web.HTTPFound('/')
+            #             response.set_cookie('AUTH', userInfo['cookie'], domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], samesite = "Strict")
+            #             response.set_cookie('USER', userInfo['user'], domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], samesite = "Strict")
+            #             return response
+            #     else:
+            #         logging.log('Failed login attempt by ip address: ' + self.request.headers['X-Real-IP'])
+            #         return web.Response(text = "Nope", status = 500)
 
 
     # logout api
@@ -127,7 +159,6 @@ def setup_routes(app):
                 not set(user).difference(ascii_letters + digits):
                     if not await app['db'].check_user_exists(data['user']):
                         data['cookie'] = token_hex(32)
-                        data['files'] = []
                         data['pass'] = sha256((data['pass'] + 'UWUSALT').encode()).hexdigest()
                         await app['db'].add_user(data['user'], data)
                         await app['db'].add_timeout(self.request.headers['X-Real-IP'], time() + 600, "registration")
@@ -317,40 +348,69 @@ def setup_routes(app):
     # login api
     @routes.view('/files')
     class WebViewer(web.View):
-        @aiohttp_jinja2.template('viewer.html')
+        #@aiohttp_jinja2.template('viewer.html')
         async def get(self):
-            if ('AUTH' in self.request.cookies) and ('USER' in self.request.cookies):
-                cookies = dict(self.request.cookies)
-                cookies['USER'] = cookies['USER'].lower()
-                schema = {
-                    'USER': {'type': 'string','maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
-                    'AUTH': {'type': 'string', 'maxlength': 64, 'minlength': 64}
-                }
-                v = cerberus.Validator(schema)
-                if v.validate(cookies) and \
-                    not set(cookies['AUTH']).difference(ascii_letters + digits) and \
-                    not set(cookies['USER']).difference(ascii_letters + digits):
-                    if await app['db'].verify_cookie(cookies['AUTH'], cookies['USER']):
-                        return {
-                            'user': cookies['USER'],
-                            'page': 'FILES',
-                            'files': await app['db'].user_files(cookies['AUTH'], cookies['USER'])
-                        }
-                    else:
-                        return {
-                            'page': 'FILES',
-                            'files': await app['db'].user_files(None, 'Guest')
-                        }
-                else:
-                    return {
-                        'page': 'FILES',
-                        'files': await app['db'].user_files(None, 'Guest')
+            r = await validate_user_cookie(app, self.request)
+            match(r):
+                case 'bad cookies' | 'invalid user':
+                    context = {
+                        'viewer': True,
+                        'msg': 'Please relogin, displaying only public files',
+                        'page': 'FILES'
                     }
-            else:
-                return {
-                    'page': 'FILES',
-                    'files': await app['db'].user_files(None, 'Guest')
-                }
+                    resp = aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+                    resp.set_cookie(name = 'AUTH', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+                    resp.set_cookie(name = 'USER', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+                    resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
+                    resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
+                    return resp
+                case 'guest':
+                    context = {
+                        'viewer': True,
+                        'page': 'FILES'
+                    }
+                    return aiohttp_jinja2.render_template('viewer.html', request = self.request, context = context)
+                case _:
+                    context = {
+                        'viewer': True,
+                        'page': 'FILES',
+                        'user': r['user']
+                    }
+                    return aiohttp_jinja2.render_template('viewer.html', request = self.request, context = context)
+
+            # print(dict(self.request.cookies), flush = True)
+            # if ('AUTH' in self.request.cookies) and ('USER' in self.request.cookies):
+            #     cookies = dict(self.request.cookies)
+            #     cookies['USER'] = cookies['USER'].lower()
+            #     schema = {
+            #         'USER': {'type': 'string','maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
+            #         'AUTH': {'type': 'string', 'maxlength': 64, 'minlength': 64}
+            #     }
+            #     v = cerberus.Validator(schema)
+            #     if v.validate(cookies) and \
+            #         not set(cookies['AUTH']).difference(ascii_letters + digits) and \
+            #         not set(cookies['USER']).difference(ascii_letters + digits):
+            #         if await app['db'].verify_cookie(cookies['AUTH'], cookies['USER']):
+            #             return {
+            #                 'user': cookies['USER'],
+            #                 'page': 'FILES',
+            #                 'files': await app['db'].user_files(cookies['AUTH'], cookies['USER'])
+            #             }
+            #         else:
+            #             return {
+            #                 'page': 'FILES',
+            #                 'files': await app['db'].user_files(None, 'Guest')
+            #             }
+            #     else:
+            #         return {
+            #             'page': 'FILES',
+            #             'files': await app['db'].user_files(None, 'Guest')
+            #         }
+            # else:
+            #     return {
+            #         'page': 'FILES',
+            #         'files': await app['db'].user_files(None, 'Guest')
+            #     }
 
     @routes.view('/download')
     class WebDownloader(web.View):
@@ -453,3 +513,101 @@ async def check_timeouts(app, ip, methods):
                     logging.log(level = 9001, msg = 'Download attempt failed by ip address: ' + ip + " due to excessive requests")
                     return context
     return None
+
+
+async def validate_user_cookie(app, request):
+    to_lower = lambda user: user.lower()
+    schema = {
+        'USER': {
+            'type': 'string',
+            'maxlength': 16, 
+            'minlength': 4, 
+            'required': True,
+            'coerce': (str, to_lower),
+            'regex': '^[A-Za-z0-9]*$',
+            'forbidden': ['root', 'admin', 'test', 'administrator', 'guest', 'public', 'user']
+        }, 
+        'AUTH': {
+            'type': 'string',
+            'required': True,
+            'regex': '^[A-Fa-f0-9]*$',
+            'maxlength': 64, 
+            'minlength': 64, 
+        }
+    }
+    cookies = dict(request.cookies)
+    v = cerberus.Validator(schema, purge_unknown = True)
+    if v.validate(cookies):
+        user = await app['db'].verify_cookie(cookies['AUTH'], cookies['USER'])
+        if user:
+            return user
+        else:
+            logging.log(level = 9001, msg = 'Incorrect cookies from ip address: ' + request.headers['X-Real-IP'] + ' Cookies: ' + json.dumps(cookies))
+            return 'invalid user'
+    elif (len(v.errors) == 2) and (list(v.errors.values()).count(['required field']) == 2):
+        return 'guest'
+    else:
+        logging.log(level = 9001, msg = 'Issue with cookies from ip address: ' + request.headers['X-Real-IP'] + ', Errors: ' + json.dumps(v.errors) + ', Cookies: ' + json.dumps(cookies))
+        return 'bad cookies'
+
+async def verify_auth(app, request):
+    to_lower = lambda user: user.lower()
+    schema = {
+        'user': {
+            'type': 'string',
+            'maxlength': 16, 
+            'minlength': 4, 
+            'required': True,
+            'coerce': (str, to_lower),
+            'regex': '^[A-Za-z0-9]*$',
+            'forbidden': ['root', 'admin', 'test', 'administrator', 'guest', 'public', 'user']
+        }, 
+        'pass': {
+            'type': 'string',
+            'required': True,
+            'regex': '^[A-Za-z0-9]*$',
+            'maxlength': 32, 
+            'minlength': 8, 
+        },
+        'from': {
+            'type': 'string',
+            'required': False,
+            'allowed': ['/files', '/upload', '/']
+        }
+    }
+    if request.has_body:
+        data = await parse_request(await request.text())
+        if not data:
+            logging.log(level = 9001, msg = "Bad login attempt in body from ip address " + request.headers['X-Real-IP'] + ' Body: ' + await request.text())
+            return None
+    else:
+        params = request.url.split('?')
+        match len(params):
+            case 1:
+                logging.level(level = 9001, msg = "Login attempt by " + request.headers['X-Real-IP'] + " missing parameters Submitted URL: " +  request.url)
+                return None
+            case 2:
+                data = await parse_request(params[1])
+                if not data:
+                    logging.log(level = 9001, msg = "Bad login attempt in body from ip address " + request.headers['X-Real-IP'] + ' URL: ' + await request.url)
+                    return None
+            case _:
+                logging.log(level = 9001, msg = "Something weird came in url from ip address " + request.headers['X-Real-IP'] + ' URL: ' + request.url)
+                return None
+    v = cerberus.Validator(schema, purge_unknown = True)
+    if v.validate(data):
+        user = await app['db'].validate_pass(data['user'], sha256((data['pass'] + 'UWUSALT').encode()).hexdigest())
+        if user:
+            return [user, data['from'] if data['from'] else '/']
+        else:
+            logging.log(level = 9001, msg = "Failed login attempt by ip address " + request.headers['X-Real-IP'] + " for user " + data['user'])
+            return None
+    else:
+        logging.log(level = 9001, msg = "Login failed validation requirements from ip address " + request.headers['X-Real-IP'] + " Errors: " + v.errors + " Data: " + data)
+        return None
+        
+async def parse_request(params):
+        try:
+            return dict(urllib.parse.parse_qsl(params, max_num_fields = 3, strict_parsing = True))
+        except ValueError:
+            return None
