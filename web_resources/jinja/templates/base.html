@@ -14,7 +14,8 @@
       <strong><em>{{title}}</strong></em>
       {% if user %}
       Logged in as {{ user }}!!!
-      <button onclick="logout()">Logout</a>
+      <button onclick="logout()" type="button">Logout</a>
+      <input type="hidden" name="from" id="from">
       {% else %}
       <input type="username" name="user" placeholder="username" id="user" size="20" required>
       <input type="password" name="pass" placeholder="password" id="pass" size="20" required>

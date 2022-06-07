@@ -30,32 +30,37 @@ def setup_routes(app):
     class WebRoot(web.View):
         async def get(self):
             r = await validate_user_cookie(app, self.request)
-            match(r):
-                case 'bad cookies' | 'invalid user':
-                    context = {
-                        'index': True,
-                        'msg': 'Please relogin',
-                        'page': 'INDEX'
-                    }
-                    resp = aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
-                    resp.set_cookie(name = 'AUTH', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
-                    resp.set_cookie(name = 'USER', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
-                    resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
-                    resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
-                    return resp
-                case 'guest':
-                    context = {
-                        'index': True,
-                        'page': 'INDEX'
-                    }
-                    return aiohttp_jinja2.render_template('index.html', request = self.request, context = context)
-                case _:
-                    context = {
-                        'index': True,
-                        'page': 'INDEX',
-                        'user': r['user']
-                    }
-                    return aiohttp_jinja2.render_template('index.html', request = self.request, context = context)
+            context = {
+                'index': True,
+                'page': 'INDEX'
+            }
+            return await get_basic_page(r, context, self.request)
+            # match(r):
+            #     case 'bad cookies' | 'invalid user':
+            #         context = {
+            #             'index': True,
+            #             'msg': 'Please relogin',
+            #             'page': 'INDEX'
+            #         }
+            #         resp = aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+            #         resp.set_cookie(name = 'AUTH', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+            #         resp.set_cookie(name = 'USER', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+            #         resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
+            #         resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
+            #         return resp
+            #     case 'guest':
+            #         context = {
+            #             'index': True,
+            #             'page': 'INDEX'
+            #         }
+            #         return aiohttp_jinja2.render_template('index.html', request = self.request, context = context)
+            #     case _:
+            #         context = {
+            #             'index': True,
+            #             'page': 'INDEX',
+            #             'user': r['user']
+            #         }
+            #         return aiohttp_jinja2.render_template('index.html', request = self.request, context = context)
 
 
 
@@ -362,32 +367,37 @@ def setup_routes(app):
         #@aiohttp_jinja2.template('viewer.html')
         async def get(self):
             r = await validate_user_cookie(app, self.request)
-            match(r):
-                case 'bad cookies' | 'invalid user':
-                    context = {
-                        'viewer': True,
-                        'msg': 'Please relogin, displaying only public files',
-                        'page': 'FILES'
-                    }
-                    resp = aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
-                    resp.set_cookie(name = 'AUTH', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
-                    resp.set_cookie(name = 'USER', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
-                    resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
-                    resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
-                    return resp
-                case 'guest':
-                    context = {
-                        'viewer': True,
-                        'page': 'FILES'
-                    }
-                    return aiohttp_jinja2.render_template('viewer.html', request = self.request, context = context)
-                case _:
-                    context = {
-                        'viewer': True,
-                        'page': 'FILES',
-                        'user': r['user']
-                    }
-                    return aiohttp_jinja2.render_template('viewer.html', request = self.request, context = context)
+            context = {
+                'viewer': True,
+                'page': 'FILES'
+            }
+            return await get_basic_page(r, context, self.request)
+            # match(r):
+            #     case 'bad cookies' | 'invalid user':
+            #         context = {
+            #             'viewer': True,
+            #             'msg': 'Please relogin, displaying only public files',
+            #             'page': 'FILES'
+            #         }
+            #         resp = aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+            #         resp.set_cookie(name = 'AUTH', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+            #         resp.set_cookie(name = 'USER', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+            #         resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
+            #         resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
+            #         return resp
+            #     case 'guest':
+            #         context = {
+            #             'viewer': True,
+            #             'page': 'FILES'
+            #         }
+            #         return aiohttp_jinja2.render_template('viewer.html', request = self.request, context = context)
+            #     case _:
+            #         context = {
+            #             'viewer': True,
+            #             'page': 'FILES',
+            #             'user': r['user']
+            #         }
+            #         return aiohttp_jinja2.render_template('viewer.html', request = self.request, context = context)
 
             # print(dict(self.request.cookies), flush = True)
             # if ('AUTH' in self.request.cookies) and ('USER' in self.request.cookies):
@@ -526,6 +536,7 @@ async def check_timeouts(app, ip, methods):
     return None
 
 
+# ensure user cookie is valid and matches claimed user
 async def validate_user_cookie(app, request):
     to_lower = lambda user: user.lower()
     schema = {
@@ -561,9 +572,41 @@ async def validate_user_cookie(app, request):
         logging.log(level = 9001, msg = 'Issue with cookies from ip address: ' + request.headers['X-Real-IP'] + ', Errors: ' + json.dumps(v.errors) + ', Cookies: ' + json.dumps(cookies))
         return 'bad cookies'
 
+# verify user authenticating with proper credentials
 async def verify_auth(app, request):
+    # use parameters in body if found
+    if request.has_body:
+        data = await parse_request(await request.text(), 3)
+        # verify parameters exist
+        if not data:
+            logging.log(level = 9001, msg = "Bad login attempt in body from ip address " + request.headers['X-Real-IP'] + ' Body: ' + await request.text())
+            return None
+    else:
+        # use parameters in url
+        params = str(request.url).split('?')
+        # verify url split properly
+        match len(params):
+            # if no parameters in request
+            case 1:
+                logging.log(level = 9001, msg = "Login attempt by " + request.headers['X-Real-IP'] + " missing parameters Submitted URL: " +  str(request.url))
+                return None
+            # if 1 set of parameters found
+            case 2:
+                data = await parse_request(params[1], 3)
+                # verify parameters exist
+                if not data:
+                    logging.log(level = 9001, msg = "Bad login attempt in body from ip address " + request.headers['X-Real-IP'] + ' URL: ' + str(request.url))
+                    return None
+            # some weird edge case preventer thing
+            case _:
+                logging.log(level = 9001, msg = "Something weird came in url from ip address " + request.headers['X-Real-IP'] + ' URL: ' + str(request.url))
+                return None
+
+    # convert username to lowercase for verification
     to_lower = lambda user: user.lower()
+    # set path to / if from invalid location that exists
     to_valid_path = lambda path: '/' if path in ['/login', '/download', '/logout', '/upload', '/register'] else path
+    # cerberus validator schema from parameters used in login
     schema = {
         'user': {
             'type': 'string',
@@ -588,39 +631,45 @@ async def verify_auth(app, request):
             'allowed': ['/files', '/upload', '/']
         }
     }
-    if request.has_body:
-        data = await parse_request(await request.text())
-        if not data:
-            logging.log(level = 9001, msg = "Bad login attempt in body from ip address " + request.headers['X-Real-IP'] + ' Body: ' + await request.text())
-            return None
-    else:
-        params = request.url.split('?')
-        match len(params):
-            case 1:
-                logging.level(level = 9001, msg = "Login attempt by " + request.headers['X-Real-IP'] + " missing parameters Submitted URL: " +  request.url)
-                return None
-            case 2:
-                data = await parse_request(params[1])
-                if not data:
-                    logging.log(level = 9001, msg = "Bad login attempt in body from ip address " + request.headers['X-Real-IP'] + ' URL: ' + await request.url)
-                    return None
-            case _:
-                logging.log(level = 9001, msg = "Something weird came in url from ip address " + request.headers['X-Real-IP'] + ' URL: ' + request.url)
-                return None
+    # cerberus validator, removes unknown values
     v = cerberus.Validator(schema, purge_unknown = True)
+    # attempt to validate data
     if v.validate(data):
+        # if valid verify user password matches password in database
         user = await app['db'].validate_pass(data['user'], sha256((data['pass'] + 'UWUSALT').encode()).hexdigest())
+        # if valid user attempt to return to previous page
         if user:
             return [user, data['from'] if data['from'] else '/']
+        # log bad credentials
         else:
-            logging.log(level = 9001, msg = "Failed login attempt by ip address " + request.headers['X-Real-IP'] + " for user " + data['user'])
+            logging.log(level = 9001, msg = "Failed login attempt (bad credentials) by ip address " + request.headers['X-Real-IP'] + " for user " + data['user'])
             return None
+    # if validation failed
     else:
         logging.log(level = 9001, msg = "Login failed validation requirements from ip address " + request.headers['X-Real-IP'] + " Errors: " + json.dumps(v.errors)  + " Data: " + json.dumps(data))
         return None
         
-async def parse_request(params):
-        try:
-            return dict(urllib.parse.parse_qsl(params, max_num_fields = 3, strict_parsing = True))
-        except ValueError:
-            return None
+# parse parameters in request
+async def parse_request(params, paramCount):
+    try:
+        return dict(urllib.parse.parse_qsl(params, max_num_fields = paramCount, strict_parsing = True))
+    except ValueError:
+        # thrown if parsing fails
+        return None
+
+# get a basic web page 
+async def get_basic_page(r, context, request):
+    match(r):
+        case 'bad cookies' | 'invalid user':
+            context['msg'] = 'Please Relogin'
+            resp = aiohttp_jinja2.render_template('message.html', request = request, context = context)
+            resp.set_cookie(name = 'AUTH', value = 'invalid', domain = re.match('.*\/(.*)\/', str(request.url)).group(0)[7:-1], path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+            resp.set_cookie(name = 'USER', value = 'invalid', domain = re.match('.*\/(.*)\/', str(request.url)).group(0)[7:-1], path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
+            resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(request.url)).group(0)[7:-1])
+            resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(request.url)).group(0)[7:-1])
+            return resp
+        case 'guest':
+            return aiohttp_jinja2.render_template('message.html', request = request, context = context)
+        case _:
+            context['user'] = r['user']
+            return aiohttp_jinja2.render_template('message.html', request = request, context = context)
