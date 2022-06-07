@@ -7,24 +7,30 @@
     table, th, td {
       border:1px solid black;
     }
+    table td {
+        word-break: break-all;
+    }
 </style>
 <p></p>
 <table style="width:100%">
     {% for file in files %}
     <tr>
-        <td id="filename">{{ file['filename'] }}</td>
-        <td id="filetype">{{ file['type'] }}</td>
-        <td><a href="download?filename=" id="download">Download</a></td>
-        <td id="description">{{ file['description'] }}</td>
+        <td style="width:5%"><a href="download?filename=" id="download">Download</a></td>
+        <td id="filename" style="width:25%">{{ file['filename'] }}</td>
+        <td id="filetype" style="width:10%">{{ file['type'] }}</td>
+        <td id="description" style="width:60%">{{ file['description'] }}</td>
+        <p hidden id="uid">{{ file['uid'] }}</p>
     </tr>
     {% endfor %}
 </table>
+
 <script>
 while (1) {
     if (!document.getElementById('description')) {break;}
     document.getElementById('description').innerHTML = atob(document.getElementById('description').innerHTML);
     document.getElementById('description').id = 'filled';
-    document.getElementById('download').href += document.getElementById('filename').innerHTML;
+    document.getElementById('download').href += document.getElementById('filename').innerHTML + "&uid=" + document.getElementById('uid').innerHTML;
+    document.getElementById('uid').id = "done"
     document.getElementById('download').id = 'done';
     document.getElementById('filename').id = 'done';
 }
