@@ -1,0 +1,63 @@
+{% set title = "Thingy" %}
+<!DOCTYPE html>
+<html>
+  <head>
+    {% block head %}
+        <link rel="stylesheet" type="text/css"
+              href="{{ url('static', filename='style.css') }}" />
+        <title>{{ page }}</title>
+    {% endblock %}
+  </head>
+  <body>
+    <div>
+      <form method="post" action="login" id="creds">
+      <strong><em>{{title}}</strong></em>
+      {% if user %}
+      Logged in as {{ user }}!!!
+      <button onclick="logout()">Logout</a>
+      {% else %}
+      <input type="username" name="user" placeholder="username" size="20" required>
+      <input type="password" name="pass" size="20" required>
+      <button onclick="login()" type="button">Login</a>
+      <button onclick="register()" type="button">Register</a> 
+      {% endif %}
+      </form>
+      <script>
+        function login() {
+          if (valid()) {
+            form = document.getElementById('creds');
+            form.action = 'login';
+            form.submit();
+          }
+        }
+        function logout() {
+          form = document.getElementById('creds');
+          form.action = 'logout';
+          form.submit();
+        }
+        function register() {
+          if (valid()) {
+            form=document.getElementById('creds');
+            form.action='register';
+            form.submit();
+          }
+        }
+        function valid() {
+          let invalid = /^[0-9a-zA-Z]+$/;
+          if (!document.forms['creds']['user'].value) {alert('USERNAME REQUIRED'); return false}
+          if (!document.forms['creds']['pass'].value) {alert('PASSWORD REQUIRED'); return false}
+          if (document.forms['creds']['user'].value.length < 4) {alert('USERNAME TOO SHORT, MIN 4 CHARACTERS'); return false}
+          if (document.forms['creds']['pass'].value.length < 8) {alert('PASSWORD TOO SHORT, MIN 8 CHARACTERS'); return false}
+          if (document.forms['creds']['user'].value.length > 16) {alert('USERNAME TOO LONG, MAX 16 CHARACTERS'); return false}
+          if (document.forms['creds']['pass'].value.length > 32) {alert('PASSWORD TOO LONG, MAX 32 CHARACTERS'); return false}
+          if (!document.forms['creds']['user'].value.match(invalid)) {alert('SPECIAL CHARACTERS NOT ALLOWED IN USERNAME'); return false}
+          if (!document.forms['creds']['pass'].value.match(invalid)) {alert('SPECIAL CHARACTERS NOT ALLOWED IN PASSWORD'); return false}
+          return true
+        }
+      </script>
+    </div>
+    {% block content %}
+    {% endblock %}
+  </body>
+</html>
+

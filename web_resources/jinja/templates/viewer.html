@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% block overIndex %}{% endblock %}
+<div>
+<style>
+    table, th, td {
+      border:1px solid black;
+    }
+</style>
+<p></p>
+<table style="width:100%">
+    {% for file in files %}
+    <tr>
+        <td id="filename">{{ file['filename'] }}</td>
+        <td id="filetype">{{ file['type'] }}</td>
+        <td><a href="download?filename=" id="download">Download</a></td>
+        <td id="description">{{ file['description'] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+<script>
+while (1) {
+    if (!document.getElementById('description')) {break;}
+    document.getElementById('description').innerHTML = atob(document.getElementById('description').innerHTML);
+    document.getElementById('description').id = 'filled';
+    document.getElementById('download').href += document.getElementById('filename').innerHTML;
+    document.getElementById('download').id = 'done';
+    document.getElementById('filename').id = 'done';
+}
+</script>
+</div>
+{% endblock %}

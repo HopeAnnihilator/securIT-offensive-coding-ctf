@@ -1,0 +1,49 @@
+version: '3.1'
+
+services:
+
+  proxy:
+    image: jwilder/nginx-proxy:alpine
+    container_name: thingy-proxy
+    restart: unless-stopped
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy=true"
+    networks: 
+      - thingy-network
+    ports: 
+      - 80:80
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:rw
+      - ./proxy/conf.d:/etc/nginx/conf.d:rw
+      - ./proxy/vhost.d:/etc/nginx/vhost.d:rw
+      - ./proxy/html:/usr/share/nginx/html:rw
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./logs:/var/log/nginx/
+      - ./proxy/certs:/etc/nginx/certs:ro
+
+  database:
+    container_name: thingy-mongo
+    image: mongo
+    restart: unless-stopped
+    networks: 
+      - thingy-network
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: isItCheatingToReadThis
+    volumes:
+      - ./mongodb:/data/db
+  
+  webapp:
+    build: .
+    container_name: thingy-webapp
+    networks:
+      - thingy-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/logs
+      - ./files:/app/web_resources/files
+
+
+networks:
+  thingy-network:

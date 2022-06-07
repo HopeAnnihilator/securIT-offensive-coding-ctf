@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% block overIndex %}{% endblock %}
+<div>
+<style>
+    table, th, td {
+      border:1px solid black;
+    }
+</style>
+<p></p>
+<table style="width:100%">
+    <tr>
+        <td>Home</td>
+        <td><a href="/" id="home">home</a></td>
+    </tr>
+    <tr>
+      <td>Upload File</td>
+      <td><a href="upload" id="upload">upload</a></td>
+    </tr>
+    <tr>
+      <td>View Files</td>
+      <td><a href="files" id="files">files</a></td>
+    </tr>
+</table>
+<script>
+    document.getElementById('upload').innerHTML = document.URL.match('.*\/(.*)\/')[0] + "upload"
+    document.getElementById('home').innerHTML = document.URL.match('.*\/(.*)\/')[0]
+    document.getElementById('files').innerHTML = document.URL.match('.*\/(.*)\/')[0] + "files"
+</script>
+</div>
+{% endblock %}

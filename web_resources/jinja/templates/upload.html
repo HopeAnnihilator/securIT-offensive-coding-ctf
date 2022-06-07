@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div>
+{% if user %}
+<p>Upload PDF or TXT file as {{ user }}</p>
+{% else %}
+<p>Upload PDF or TXT file as Guest</p>
+<p>ALL GUEST UPLOADS ARE PUBLIC</p>
+{% endif %}
+<form action="/upload" method="POST" enctype="multipart/form-data">
+<input type="file" id="fileupload" name="fileupload">
+<br>
+<p>Upload Information/Description</p>
+<textarea id="textinput" name="description" rows="4" cols="50"></textarea>
+<br>
+<input type="submit">
+</form>
+</div>
+{% endblock %}

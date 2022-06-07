@@ -1,0 +1,8 @@
+aiohttp
+gunicorn
+pymongo
+jinja2
+aiohttp_jinja2
+cerberus
+python-magic
+numpy
