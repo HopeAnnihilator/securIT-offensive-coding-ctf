@@ -1,7 +1,7 @@
 from aiohttp import web
 import aiohttp_jinja2, jinja2
 
-from web_resources.jinja.loader import setup_routes
+from web_resources.jinja.driver import setup_routes
 
 async def run_webapp(database):
     webapp = web.Application()

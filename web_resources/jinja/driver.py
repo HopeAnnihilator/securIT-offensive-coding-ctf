@@ -35,33 +35,6 @@ def setup_routes(app):
                 'page': 'INDEX'
             }
             return await get_basic_page(r, context, self.request)
-            # match(r):
-            #     case 'bad cookies' | 'invalid user':
-            #         context = {
-            #             'index': True,
-            #             'msg': 'Please relogin',
-            #             'page': 'INDEX'
-            #         }
-            #         resp = aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
-            #         resp.set_cookie(name = 'AUTH', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
-            #         resp.set_cookie(name = 'USER', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
-            #         resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
-            #         resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
-            #         return resp
-            #     case 'guest':
-            #         context = {
-            #             'index': True,
-            #             'page': 'INDEX'
-            #         }
-            #         return aiohttp_jinja2.render_template('index.html', request = self.request, context = context)
-            #     case _:
-            #         context = {
-            #             'index': True,
-            #             'page': 'INDEX',
-            #             'user': r['user']
-            #         }
-            #         return aiohttp_jinja2.render_template('index.html', request = self.request, context = context)
-
 
 
     # login api
@@ -92,46 +65,6 @@ def setup_routes(app):
                     'page': 'LOGIN FAILED'
                 }
                 return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
-
-
-                # check = await check_timeouts(app, self.request.headers['X-Real-IP'], ['login'])
-                # if check:
-                #     return aiohttp_jinja2.render_template('message.html', request = self.request, context = check)
-                # await app['db'].log_request(self.request.headers['X-Real-IP'], {'time': time(), 'action': 'login'})
-
-                    
-            # print(self.request.headers, flush = True)
-            # print(await self.request.text(), flush = True)
-            # # if self.request.has_body and ('AUTH' not in self.request.cookies) and ('USER' not in self.request.cookies):
-            # if self.request.has_body:
-            #     check = await check_timeouts(app, self.request.headers['X-Real-IP'], ['login'])
-            #     if check:
-            #         return aiohttp_jinja2.render_template('message.html', request = self.request, context = check)
-            #     await app['db'].log_request(self.request.headers['X-Real-IP'], {'time': time(), 'action': 'login'})
-
-            #     try:
-            #         data = dict(urllib.parse.parse_qsl(await self.request.text(), max_num_fields = 2, strict_parsing = True))
-            #     except ValueError:
-            #         logging.log('Failed login attempt by ip address: ' + self.request.headers['X-Real-IP'])
-            #         return web.Response(text = "Nope", status = 500)
-            #     schemaAuth = {
-            #         'user': {'type': 'string', 'maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
-            #         'pass': {'type': 'string', 'maxlength': 32, 'minlength': 4}
-            #     }
-            #     user = data['user'].lower()
-            #     v = cerberus.Validator(schemaAuth)
-            #     if v.validate(data) and \
-            #     not set(data['pass']).difference(ascii_letters + digits) and \
-            #     not set(user).difference(ascii_letters + digits):
-            #         userInfo = await app['db'].validate_pass(data['user'], sha256((data['pass'] + 'UWUSALT').encode()).hexdigest())
-            #         if userInfo: 
-            #             response = web.HTTPFound('/')
-            #             response.set_cookie('AUTH', userInfo['cookie'], domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], samesite = "Strict")
-            #             response.set_cookie('USER', userInfo['user'], domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1], samesite = "Strict")
-            #             return response
-            #     else:
-            #         logging.log('Failed login attempt by ip address: ' + self.request.headers['X-Real-IP'])
-            #         return web.Response(text = "Nope", status = 500)
 
 
     # logout api

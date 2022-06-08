@@ -44,12 +44,10 @@ class mongodb:
         return False
 
     async def verify_cookie(self, cookie, user):
-        if await self.check_user_exists(user):
-            return self.client['users'][user.lower()].find_one({'cookie': cookie})
+        return self.client['users'][user.lower()].find_one({'cookie': cookie})
 
     async def validate_pass(self, user, password):
-        if await self.check_user_exists(user):
-            return self.client['users'][user.lower()].find_one({'pass': password})
+        return self.client['users'][user.lower()].find_one({'pass': password})
         
     async def user_files(self, cookie, user):
         if await self.check_user_exists(user) and (user != 'Guest'):
