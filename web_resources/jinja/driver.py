@@ -43,8 +43,11 @@ def setup_routes(app):
         async def get(self):
             return web.HTTPFound('/')
         async def post(self):
-            arr = await(verify_auth(app, self.request))
-            if arr:
+            validData = await verify_auth(app, self.request)
+
+            if validData:
+                # if valid verify user password matches password in database
+                arr = await verify_creds(app, self.request, validData)
                 resp = web.HTTPFound(arr.pop())
                 user = arr.pop()
                 resp.set_cookie(
@@ -568,15 +571,7 @@ async def verify_auth(app, request):
     v = cerberus.Validator(schema, purge_unknown = True)
     # attempt to validate data
     if v.validate(data):
-        # if valid verify user password matches password in database
-        user = await app['db'].validate_pass(data['user'], sha256((data['pass'] + 'UWUSALT').encode()).hexdigest())
-        # if valid user attempt to return to previous page
-        if user:
-            return [user, data['from'] if data['from'] else '/']
-        # log bad credentials
-        else:
-            logging.log(level = 9001, msg = "Failed login attempt (bad credentials) by ip address " + request.headers['X-Real-IP'] + " for user " + data['user'])
-            return None
+        return data
     # if validation failed
     else:
         logging.log(level = 9001, msg = "Login failed validation requirements from ip address " + request.headers['X-Real-IP'] + " Errors: " + json.dumps(v.errors)  + " Data: " + json.dumps(data))
@@ -606,3 +601,13 @@ async def get_basic_page(r, context, request):
         case _:
             context['user'] = r['user']
             return aiohttp_jinja2.render_template('message.html', request = request, context = context)
+
+async def verify_creds(app, request, data):
+        user = await app['db'].validate_pass(data['user'], sha256((data['pass'] + 'UWUSALT').encode()).hexdigest())
+        # if valid user attempt to return to previous page
+        if user:
+            return [user, data['from'] if data['from'] else '/']
+        # log bad credentials
+        else:
+            logging.log(level = 9001, msg = "Failed login attempt (bad credentials) by ip address " + request.headers['X-Real-IP'] + " for user " + data['user'])
+            return None
