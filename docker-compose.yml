@@ -35,7 +35,23 @@ services:
       - ./mongodb:/data/db
     ports:
       - 27017:27017
-  
+
+  mongo-express:
+    container_name: thingy-mongo-webui
+    image: mongo-express:0.54
+    restart: always
+    networks: 
+      - thingy-network
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: isItCheatingToReadThis
+      ME_CONFIG_MONGODB_SERVER: thingy-mongo
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH_USERNAME: root
+      ME_CONFIG_BASICAUTH_PASSWORD: toor
+
   webapp:
     build: .
     container_name: thingy-webapp

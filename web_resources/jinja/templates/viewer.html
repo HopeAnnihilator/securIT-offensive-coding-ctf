@@ -4,21 +4,35 @@
 {% block top %}{% endblock %}
 <div>
 <style>
-    table, th, td {
-      border:1px solid black;
+    table {
+        width: 100%;
+        border-collapse: collapse;
     }
-    table td {
+    table td, th {
+        border:2px solid white;
         word-break: break-all;
+    }
+    tr:nth-child(even) {
+        background-color: white;
     }
 </style>
 <p></p>
 <table style="width:100%">
+    <tr>
+        <th>Link</th>
+        <th>File Info</th>
+        <th>Description</th>
+    </tr>
     {% for file in files %}
     <tr>
         <td style="width:5%"><a href="download?filename=" id="download">Download</a></td>
-        <td id="filename" style="width:25%">{{ file['filename'] }}</td>
-        <td id="filetype" style="width:10%">{{ file['type'] }}</td>
-        <td id="description" style="width:60%">{{ file['description'] }}</td>
+        <td id="fileinfo" style="width:25%">
+            Filename: {{ file['filename'] }} <br>
+            Size: {{ file['size'] }} bytes <br>
+            Type: {{ file['type'] }} <br>
+            Uploaded on: {{ file['time'] }}
+        </td>
+        <td id="description" style="width:70%">{{ file['description'] }}</td>
         <p hidden id="uid">{{ file['uid'] }}</p>
     </tr>
     {% endfor %}
@@ -29,10 +43,9 @@ while (1) {
     if (!document.getElementById('description')) {break;}
     document.getElementById('description').innerHTML = atob(document.getElementById('description').innerHTML);
     document.getElementById('description').id = 'filled';
-    document.getElementById('download').href += document.getElementById('filename').innerHTML + "&uid=" + document.getElementById('uid').innerHTML;
-    document.getElementById('uid').id = "done"
-    document.getElementById('download').id = 'done';
-    document.getElementById('filename').id = 'done';
+    // document.getElementById('download').href += document.getElementById('filename').innerHTML + "&uid=" + document.getElementById('uid').innerHTML;
+    // document.getElementById('uid').id = "done"
+    // document.getElementById('download').id = 'done';
 }
 </script>
 </div>

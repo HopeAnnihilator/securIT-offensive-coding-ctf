@@ -49,20 +49,18 @@ class mongodb:
     async def validate_pass(self, user, password):
         return self.client['users'][user.lower()].find_one({'pass': password})
         
-    async def user_files(self, cookie, user):
-        if await self.check_user_exists(user) and (user != 'Guest'):
-            return self.client['users'][user.lower()].find_one({'cookie': cookie})['files']
-        elif (user == 'Guest'):
-            return self.client['users'][user.lower()].find({'author': 'Guest'})
-        else:
-            return None
+    async def user_files(self, user):
+        return self.client['files'][user.lower()].find()
+        # if await self.check_user_exists(user) and (user.lower() != 'guest'):
+        #     return self.client['users'][user.lower()].find_one({'cookie': cookie})['files']
+        # elif (user.lower() == 'guest'):
+        #     return self.client['users'][user.lower()].find({'author': 'Guest'})
+        # else:
+        #     return None
     
-    async def add_file_user(self, cookie, user, data):
-        if await self.check_user_exists(user) and (user != 'Guest'):
-            if await self.verify_cookie(cookie, user):
-                self.client['users'][user.lower()].insert_one({data})
-        elif user == 'Guest':
-            self.client['users'][user.lower()].insert_one({data})
+    async def add_file_user(self, user, data):
+        self.client['files'][user.lower()].insert_one(data)
+
             
     async def log_request(self, ipAdd, data):
         self.client['logs'][strftime('%b-%d-%Y-', gmtime()) + ipAdd].insert_one(data)
