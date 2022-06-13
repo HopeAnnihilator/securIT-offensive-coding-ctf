@@ -30,10 +30,11 @@
             Filename: {{ file['filename'] }} <br>
             Size: {{ file['size'] }} bytes <br>
             Type: {{ file['type'] }} <br>
-            Uploaded on: {{ file['time'] }}
+            Uploaded on: timehere
         </td>
         <td id="description" style="width:70%">{{ file['description'] }}</td>
         <p hidden id="uid">{{ file['uid'] }}</p>
+        <p hidden id="time">{{file['time'] }}</p>
     </tr>
     {% endfor %}
 </table>
@@ -43,6 +44,9 @@ while (1) {
     if (!document.getElementById('description')) {break;}
     document.getElementById('description').innerHTML = atob(document.getElementById('description').innerHTML);
     document.getElementById('description').id = 'filled';
+    document.getElementById('fileinfo').innerHTML = document.getElementById('fileinfo').innerHTML.replace('timehere', new Date(parseFloat(document.getElementById('time').innerHTML) * 1000).toString().match(/(^[\w\s\:]+?)\:([\w:]+)/g)[0])
+    document.getElementById('time').id = 'set'
+    document.getElementById('fileinfo').id = 'fileinfoset'
     // document.getElementById('download').href += document.getElementById('filename').innerHTML + "&uid=" + document.getElementById('uid').innerHTML;
     // document.getElementById('uid').id = "done"
     // document.getElementById('download').id = 'done';
