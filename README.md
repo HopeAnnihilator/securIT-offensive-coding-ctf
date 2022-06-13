@@ -7,3 +7,4 @@ Reminders:
     create run instructions
     check for basic vulns 
     add timeouts
+    add navigation to top bar
