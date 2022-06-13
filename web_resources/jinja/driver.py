@@ -227,66 +227,6 @@ def setup_routes(app):
                 context['files'] = sorted([i for i in await app['db'].user_files(r['user'] if type(r) is dict else r)], key = lambda i: i['time'], reverse = True)
             return await get_basic_page(r, context, self.request)
             
-            # match(r):
-            #     case 'bad cookies' | 'invalid user':
-            #         context = {
-            #             'viewer': True,
-            #             'msg': 'Please relogin, displaying only public files',
-            #             'page': 'FILES'
-            #         }
-            #         resp = aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
-            #         resp.set_cookie(name = 'AUTH', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
-            #         resp.set_cookie(name = 'USER', value = 'invalid', path = '/', expires = 'Thu, 01 Jan 1970 00:00:00 GMT', samesite = 'strict')
-            #         resp.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
-            #         resp.del_cookie('USER', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
-            #         return resp
-            #     case 'guest':
-            #         context = {
-            #             'viewer': True,
-            #             'page': 'FILES'
-            #         }
-            #         return aiohttp_jinja2.render_template('viewer.html', request = self.request, context = context)
-            #     case _:
-            #         context = {
-            #             'viewer': True,
-            #             'page': 'FILES',
-            #             'user': r['user']
-            #         }
-            #         return aiohttp_jinja2.render_template('viewer.html', request = self.request, context = context)
-
-            # print(dict(self.request.cookies), flush = True)
-            # if ('AUTH' in self.request.cookies) and ('USER' in self.request.cookies):
-            #     cookies = dict(self.request.cookies)
-            #     cookies['USER'] = cookies['USER'].lower()
-            #     schema = {
-            #         'USER': {'type': 'string','maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
-            #         'AUTH': {'type': 'string', 'maxlength': 64, 'minlength': 64}
-            #     }
-            #     v = cerberus.Validator(schema)
-            #     if v.validate(cookies) and \
-            #         not set(cookies['AUTH']).difference(ascii_letters + digits) and \
-            #         not set(cookies['USER']).difference(ascii_letters + digits):
-            #         if await app['db'].verify_cookie(cookies['AUTH'], cookies['USER']):
-            #             return {
-            #                 'user': cookies['USER'],
-            #                 'page': 'FILES',
-            #                 'files': await app['db'].user_files(cookies['AUTH'], cookies['USER'])
-            #             }
-            #         else:
-            #             return {
-            #                 'page': 'FILES',
-            #                 'files': await app['db'].user_files(None, 'Guest')
-            #             }
-            #     else:
-            #         return {
-            #             'page': 'FILES',
-            #             'files': await app['db'].user_files(None, 'Guest')
-            #         }
-            # else:
-            #     return {
-            #         'page': 'FILES',
-            #         'files': await app['db'].user_files(None, 'Guest')
-            #     }
 
     @routes.view('/download')
     class WebDownloader(web.View):
