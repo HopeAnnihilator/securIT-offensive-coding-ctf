@@ -25,7 +25,7 @@
     </tr>
     {% for file in files %}
     <tr>
-        <td style="width:5%"><a href="download?filename=" id="download">Download</a></td>
+        <td style="width:5%"><a href="download/" id="download">Download</a></td>
         <td id="fileinfo" style="width:25%">
             Filename: {{ file['filename'] }} <br>
             Size: {{ file['size'] }} bytes <br>
@@ -47,9 +47,9 @@ while (1) {
     document.getElementById('fileinfo').innerHTML = document.getElementById('fileinfo').innerHTML.replace('timehere', new Date(parseFloat(document.getElementById('time').innerHTML) * 1000).toString().match(/(^[\w\s\:]+?)\:([\w:]+)/g)[0])
     document.getElementById('time').id = 'set'
     document.getElementById('fileinfo').id = 'fileinfoset'
-    // document.getElementById('download').href += document.getElementById('filename').innerHTML + "&uid=" + document.getElementById('uid').innerHTML;
-    // document.getElementById('uid').id = "done"
-    // document.getElementById('download').id = 'done';
+    document.getElementById('download').href += document.getElementById('uid').innerHTML
+    document.getElementById('uid').id = "uidset"
+    document.getElementById('download').id = 'downloadset';
 }
 </script>
 </div>

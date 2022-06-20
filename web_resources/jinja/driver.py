@@ -212,77 +212,64 @@ def setup_routes(app):
                 else:
                     logging.log(level = 9001, msg = 'File upload attempt failed by ip address: ' + self.request.headers['X-Real-IP'] + " due to invalid filename or upload request: " + field.filename[:128] if field.filename else "")
 
-    # login api
+    # file viewer api
     @routes.view('/files')
     class WebViewer(web.View):
-        #@aiohttp_jinja2.template('viewer.html')
         async def get(self):
             r = await validate_user_cookie(app, self.request)
             context = {
                 'viewer': True,
                 'page': 'FILES'
             }
-
             if r not in ['invalid user', 'bad cookies']:
                 context['files'] = sorted([i for i in await app['db'].user_files(r['user'] if type(r) is dict else r)], key = lambda i: i['time'], reverse = True)
             return await get_basic_page(r, context, self.request)
             
-
-    @routes.view('/download')
+    # download api
+    @routes.view('/download/{file}')
     class WebDownloader(web.View):
         async def get(self):
-                
-            check = await check_timeouts(app, self.request.headers['X-Real-IP'], ['download'])
-            if check:
-                return aiohttp_jinja2.render_template('message.html', request = self.request, context = check)
-            await app['db'].log_request(self.request.headers['X-Real-IP'], {'time': time(), 'action': 'download'})
-            try:
-                data = dict(urllib.parse.parse_qs(str(self.request.url)), max_num_fields = 2, strict_parsing = True)
-            except ValueError: 
-                try:
-                    data = dict(urllib.parse.parse_qsl(await self.request.text(), max_num_fields = 2, strict_parsing = True))
-                except ValueError:
-                    logging.log(level = 9001, msg = "Bad file download attempt by ip: " + self.request.headers['X-Real-IP'] + " request: " + await self.request.text() + "headers: " + "")
-                    return web.Response(text = "Nope", status = 500)
-            print(data, flush = True)
-            data['filename'] = data[str(self.request.url).split('=')[0]][0]
-            if not set(data['filename']).difference(ascii_letters + digits + '.') and data['filename'] and (len(data['filename']) < 256):
-                if ('AUTH' in self.request.cookies) and ('USER' in self.request.cookies):
-                    cookies = dict(self.request.cookies)
-                    cookies['USER'] = cookies['USER'].lower()
-                    schema = {
-                        'USER': {'type': 'string','maxlength': 16, 'minlength': 4, 'forbidden': ['root', 'admin', 'test', 'administrator', 'guest']}, 
-                        'AUTH': {'type': 'string', 'maxlength': 64, 'minlength': 64}
-                    }
-                    v = cerberus.Validator(schema)
-                    if v.validate(cookies) and \
-                        not set(cookies['AUTH']).difference(ascii_letters + digits) and \
-                        not set(cookies['USER']).difference(ascii_letters + digits):
-                        if await app['db'].verify_cookie(cookies['AUTH'], cookies['USER']):
-                            fileinfo = await app['db'].get_file_info(cookies['AUTH'], cookies['USER'], data['uid'][0])  
-                            # print(data, flush = True)
-                            # print(fileinfo, flush =  True)
-                            return web.FileResponse(path = fileinfo['location'], chunk_size = 8192, headers = {'Content-Disposition': "attachment; filename=" + fileinfo['filename']})
-                            #response = web.StreamResponse(content_type = 'attachment', headers = 'filename=' + fileinfo['filename'])
-                            #await response.prepare()
-                            #file = open(fileinfo['location'], 'rb', buffering = 8192)
-                            #for chunk in file:
-                            #    if chunk:
-                            #        await response.write(chunk)
-                            #return response.write_eof()
-                            
-                    else:
-                        return web.Response(text = "Failed")
+            context = {
+                'index': True,
+                'msg': 'Download attempt failed due to invalid request',
+                'page': 'DOWNLOAD FAILED'
+            }
+            uid = self.request.match_info['file']
+            schema = {
+                'uid': {
+                    'type': 'string',
+                    'required': True,
+                    'regex': '^[a-fA-F0-9]+$',
+                    'maxlength': 64,
+                    'minlength': 64
+                }
+            }
+            v = cerberus.Validator(schema)
+            if v.validate({'uid': uid}):
+                r = await validate_user_cookie(app, self.request)
+                match(r):
+                    case 'bad cookies' | 'invalid user':
+                        return await get_basic_page(r, context, self.request)
+                    case 'guest':
+                        user = 'guest'
+                    case _:
+                        user = r['user']
+                fileinfo = await app['db'].get_file_info(user, uid)
+                if fileinfo:
+                    return web.FileResponse(
+                        path = fileinfo['location'], 
+                        chunk_size = 8192, 
+                        headers = {
+                            'Content-Type': fileinfo['type'],
+                            'Content-Disposition': "attachment; filename=" + fileinfo['filename']
+                        }
+                    )
                 else:
-                    return web.Response(text = "Failed")
+                    context['msg'] = 'File does not exist or you do not have access to it',
+                    return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
             else:
-                return web.Response(text = "Failed")
-
-
- 
-                                
-               
-
+                return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+                
     setup_static_routes(app)
     return app.add_routes(routes)
 
@@ -341,13 +328,13 @@ async def validate_user_cookie(app, request):
             'minlength': 4, 
             'required': True,
             'coerce': (str, to_lower),
-            'regex': '^[\w]*$',
+            'regex': '^[\w]+$',
             'forbidden': ['root', 'admin', 'test', 'administrator', 'guest', 'public', 'user']
         }, 
         'AUTH': {
             'type': 'string',
             'required': True,
-            'regex': '^[A-Fa-f0-9]*$',
+            'regex': '^[A-Fa-f0-9]+$',
             'maxlength': 64, 
             'minlength': 64, 
         }
@@ -409,13 +396,13 @@ async def verify_auth(app, request, method):
             'minlength': 4, 
             'required': True,
             'coerce': (str, to_lower),
-            'regex': '^[\w]*$',
+            'regex': '^[\w]+$',
             'forbidden': ['root', 'admin', 'test', 'administrator', 'guest', 'public', 'user']
         }, 
         'pass': {
             'type': 'string',
             'required': True,
-            'regex': '^[\w]*$',
+            'regex': '^[\w]+$',
             'maxlength': 32, 
             'minlength': 8, 
         },
@@ -518,4 +505,31 @@ async def receive_file_buffered(app, request, reader, field, fileinfo):
         logging.log(level = 9001, msg = 'description too long when uploading file by: ' + request.headers['X-Real-IP'] + 'description: ' + description.decode())
         return 'too long'
 
-
+# async def verify_download(app, request):
+#     if request.has_body:
+#         data = await parse_request(await request.text(), 2)
+#         # verify parameters exist
+#         if not data:
+#             logging.log(level = 9001, msg = "Bad download attempt in body from ip address " + request.headers['X-Real-IP'] + ' Body: ' + await request.text())
+#             return None
+#     else:
+#         # use parameters in url
+#         params = str(request.url).split('?')
+#         # verify url split properly
+#         match len(params):
+#             # if no parameters in request
+#             case 1:
+#                 logging.log(level = 9001, msg = "Download attempt by " +request.headers['X-Real-IP'] + " missing parameters Submitted URL: " +  str(request.url))
+#                 return None
+#             # if 1 set of parameters found
+#             case 2:
+#                 data = await parse_request(params[1], 3)
+#                 # verify parameters exist
+#                 if not data:
+#                     logging.log(level = 9001, msg = "Bad download attempt in body from ip address " + request.headers['X-Real-IP'] + ' URL: ' + str(request.url))
+#                     return None
+#             # some weird edge case preventer thing
+#             case _:
+#                 logging.log(level = 9001, msg = "Something weird came in url from ip address " + request.headers['X-Real-IP'] + ' URL: ' + str(request.url))
+#                 return None
+#     return data

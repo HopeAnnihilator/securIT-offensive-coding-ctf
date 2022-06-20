@@ -68,14 +68,7 @@ class mongodb:
     async def get_times(self, ipAdd, filter):
         return self.client['logs'][strftime('%b-%d-%Y-', gmtime()) + ipAdd].find(filter)
 
-    async def get_file_info(self, cookie, user, uid):
-        if await self.check_user_exists(user) and (user != 'Guest'):
-            files = self.client['users'][user.lower()].find_one({'cookie': cookie})['files']
-            for file in files:
-                if file['uid'] == uid:
-                    return file
-            return None
-        elif (user == 'Guest'):
-            pass
+    async def get_file_info(self, user, uid):
+        return self.client['files'][user.lower()].find_one({'uid': uid})
 
     
