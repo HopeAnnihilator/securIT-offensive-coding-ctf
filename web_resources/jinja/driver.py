@@ -41,6 +41,15 @@ def setup_routes(app):
         async def get(self):
             return web.HTTPFound('/')
         async def post(self):
+            context = {
+                'index': True,
+                'page': 'LOGIN FAILED'
+            }
+            timeout = await check_timeouts(app, self.request, 'login', 60, 10)
+            if not timeout:
+                context['msg'] = 'Too many login attempts, please try again in 60 seconds'
+                return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+
             validData = await verify_auth(app, self.request, 'login')
             if validData:
                 # if valid verify user password matches password in database
@@ -60,11 +69,7 @@ def setup_routes(app):
                     )
                     return resp
                 else:
-                    context = {
-                        'index': True,
-                        'msg': 'Failed login attempt, much bad',
-                        'page': 'LOGIN FAILED'
-                    }
+                    context['msg'] = 'Failed login attempt, much bad'
                     return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
 
 
@@ -74,6 +79,15 @@ def setup_routes(app):
         async def get(self):
             return web.HTTPFound('/')
         async def post(self):
+            context = {
+                'index': True,
+                'page': 'LOGOUT FAILED :P'
+            }
+            timeout = await check_timeouts(app, self.request, 'logout', 60, 10)
+            if not timeout:
+                context['msg'] = 'Too many logout attempts, please try again in 60 seconds'
+                return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+
             if ('AUTH' in self.request.cookies) and ('USER' in self.request.cookies):
                 resp = web.HTTPFound('/')
                 # response.del_cookie('AUTH', domain = re.match('.*\/(.*)\/', str(self.request.url)).group(0)[7:-1])
@@ -103,6 +117,15 @@ def setup_routes(app):
         async def get(self):
             return web.HTTPFound('/')
         async def post(self):
+            context = {
+                'index': True,
+                'page': 'REGISTRATION FAILED'
+            }
+            timeout = await check_timeouts(app, self.request, 'register', 600, 1)
+            if not timeout:
+                context['msg'] = 'Too many registration attempts, please try again in 600 seconds'
+                return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+
             validData = await verify_auth(app, self.request, 'register')
             if validData:
                 if not await app['db'].check_user_exists(validData['user']):
@@ -152,6 +175,12 @@ def setup_routes(app):
             context = {
                 'upload': True
             }
+            timeout = await check_timeouts(app, self.request, 'upload', 600, 10)
+            if not timeout:
+                context['page'] = 'UPLOAD FAILED'
+                context['msg'] = 'Too many upload attempts, please try again in 600 seconds'
+                return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+
             if self.request.has_body:
                 r = await validate_user_cookie(app, self.request)
                 match(r):
@@ -229,9 +258,14 @@ def setup_routes(app):
         async def get(self):
             context = {
                 'index': True,
-                'msg': 'Download attempt failed due to invalid request',
                 'page': 'DOWNLOAD FAILED'
             }
+            timeout = await check_timeouts(app, self.request, 'download', 600, 10)
+            if not timeout:
+                context['msg'] = 'Too many download attempts, please try again in 600 seconds'
+                return aiohttp_jinja2.render_template('message.html', request = self.request, context = context)
+
+            context['msg'] = 'Download attempt failed due to invalid request'
             uid = self.request.match_info['file']
             schema = {
                 'uid': {
@@ -274,46 +308,46 @@ def setup_routes(app):
 def setup_static_routes(app):
     app.router.add_static('/static/', path = 'web_resources/jinja/static', name = 'static')
 
-async def check_timeouts(app, ip, methods):
-    for check in methods:
-        match(check):
-            case 'upload':
-                arr = np.array([i['time'] for i in await app['db'].get_times(ip, {'action': 'upload'})])
-                if list(np.logical_and(arr > (time() - 600), arr < time())).count(True) > 10:
-                    context = {
-                        'msg': 'Only 10 upload attempts allowed per 10 minutes',
-                        'page': 'TIMEOUT'
-                    }
-                    logging.log(level = 9001, msg = 'File upload attempt failed by ip address: ' + ip + " due to excessive requests")
-                    return context
-            case 'register':
-                arr = np.array([i['time'] for i in await app['db'].get_times(ip, {'action': 'register'})])
-                if list(np.logical_and(arr > (time() - 1800), arr < time())).count(True) > 1:
-                    context = {
-                        'msg': 'Only 10 account creation attempts allowed per 30 minutes',
-                        'page': 'TIMEOUT'
-                    }
-                    logging.log(level = 9001, msg = 'Registration attempt failed by ip address: ' + ip + " due to excessive requests")
-                    return context
-            case 'login':
-                arr = np.array([i['time'] for i in await app['db'].get_times(ip, {'action': 'login'})])
-                if list(np.logical_and(arr > (time() - 60), arr < time())).count(True) > 10:
-                    context = {
-                        'msg': 'Only 10 login attempts allowed per minute',
-                        'page': 'TIMEOUT'
-                    }
-                    logging.log(level = 9001, msg = 'Login attempt failed by ip address: ' + ip + " due to excessive requests")
-                    return context
-            case 'download':
-                arr = np.array([i['time'] for i in await app['db'].get_times(ip, {'action': 'download'})])
-                if list(np.logical_and(arr > (time() - 60), arr < time())).count(True) > 10:
-                    context = {
-                        'msg': 'Only 10 download attempts allowed per minute',
-                        'page': 'TIMEOUT'
-                    }
-                    logging.log(level = 9001, msg = 'Download attempt failed by ip address: ' + ip + " due to excessive requests")
-                    return context
-    return None
+# async def check_timeouts(app, ip, methods):
+#     for check in methods:
+#         match(check):
+#             case 'upload':
+#                 arr = np.array([i['time'] for i in await app['db'].get_times(ip, {'action': 'upload'})])
+#                 if list(np.logical_and(arr > (time() - 600), arr < time())).count(True) > 10:
+#                     context = {
+#                         'msg': 'Only 10 upload attempts allowed per 10 minutes',
+#                         'page': 'TIMEOUT'
+#                     }
+#                     logging.log(level = 9001, msg = 'File upload attempt failed by ip address: ' + ip + " due to excessive requests")
+#                     return context
+#             case 'register':
+#                 arr = np.array([i['time'] for i in await app['db'].get_times(ip, {'action': 'register'})])
+#                 if list(np.logical_and(arr > (time() - 1800), arr < time())).count(True) > 1:
+#                     context = {
+#                         'msg': 'Only 10 account creation attempts allowed per 30 minutes',
+#                         'page': 'TIMEOUT'
+#                     }
+#                     logging.log(level = 9001, msg = 'Registration attempt failed by ip address: ' + ip + " due to excessive requests")
+#                     return context
+#             case 'login':
+#                 arr = np.array([i['time'] for i in await app['db'].get_times(ip, {'action': 'login'})])
+#                 if list(np.logical_and(arr > (time() - 60), arr < time())).count(True) > 10:
+#                     context = {
+#                         'msg': 'Only 10 login attempts allowed per minute',
+#                         'page': 'TIMEOUT'
+#                     }
+#                     logging.log(level = 9001, msg = 'Login attempt failed by ip address: ' + ip + " due to excessive requests")
+#                     return context
+#             case 'download':
+#                 arr = np.array([i['time'] for i in await app['db'].get_times(ip, {'action': 'download'})])
+#                 if list(np.logical_and(arr > (time() - 60), arr < time())).count(True) > 10:
+#                     context = {
+#                         'msg': 'Only 10 download attempts allowed per minute',
+#                         'page': 'TIMEOUT'
+#                     }
+#                     logging.log(level = 9001, msg = 'Download attempt failed by ip address: ' + ip + " due to excessive requests")
+#                     return context
+#     return None
 
 
 # ensure user cookie is valid and matches claimed user
@@ -502,3 +536,22 @@ async def receive_file_buffered(app, request, reader, field, fileinfo):
     if len(description) > 512:
         logging.log(level = 9001, msg = 'description too long when uploading file by: ' + request.headers['X-Real-IP'] + 'description: ' + description.decode())
         return 'too long'
+
+
+async def check_timeouts(app, request, method, period, maxAttempts):    
+    timeout_info = await app['db'].get_timeout_object(request.headers['X-Real-IP'], method)
+    try:
+        if (time() - json.loads(timeout_info['time'])[0]) > period:
+            app['db'].reset_timeout_object(request.headers['X-Real-IP'], method)
+            return True
+        else:
+            if json.loads(timeout_info['time'])[0] <= maxAttempts:
+                app['db'].increment_timeout_counter(request.headers['X-Real-IP'], method, timeout_info)
+                if (json.loads(timeout_info['time'])[1] >= maxAttempts) and (maxAttempts > 1):
+                    logging.log(level = 9001, msg = "Excessive " + method + " attempts by " + request.headers['X-Real-IP'])
+                return True
+            else:
+                return False
+    except TypeError:
+        app['db'].add_new_timeout_object(request.headers['X-Real-IP'], method)
+        return True

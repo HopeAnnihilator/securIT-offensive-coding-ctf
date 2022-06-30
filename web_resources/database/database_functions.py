@@ -1,5 +1,6 @@
 from pymongo import MongoClient, errors
 from time import time, gmtime, strftime
+import json
 
 class mongodb:
     def __init__(self):
@@ -70,5 +71,16 @@ class mongodb:
 
     async def get_file_info(self, user, uid):
         return self.client['files'][user.lower()].find_one({'uid': uid})
-
     
+    async def get_timeout_object(self, ipAdd, method):
+        return self.client['timeouts'][ipAdd].find_one({'method': method})
+
+    async def increment_timeout_counter(self, ipAdd, method, obj):
+        obj['time'][0] += 1
+        self.client['timeouts'][ipAdd].replace_one({'method': method}, obj)
+
+    async def add_new_timeout_object(self, ipAdd, method):
+        self.client['timeouts'][ipAdd].insert_one({'method': method, 'time': json.dumps([1, time()])})
+    
+    async def reset_timeout_object(self, ipAdd, method):
+        self.client['timeouts'][ipAdd].replace_one({'method': method, 'time': json.dumps([1, time()])})
