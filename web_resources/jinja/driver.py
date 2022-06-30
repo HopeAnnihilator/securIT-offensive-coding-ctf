@@ -2,11 +2,9 @@ from aiohttp import web
 import aiohttp_jinja2
 import urllib
 import cerberus
-from string import ascii_letters, digits
 import logging
 from secrets import token_hex
 from time import time
-import asyncio
 from hashlib import sha256
 import re
 import os
@@ -504,32 +502,3 @@ async def receive_file_buffered(app, request, reader, field, fileinfo):
     if len(description) > 512:
         logging.log(level = 9001, msg = 'description too long when uploading file by: ' + request.headers['X-Real-IP'] + 'description: ' + description.decode())
         return 'too long'
-
-# async def verify_download(app, request):
-#     if request.has_body:
-#         data = await parse_request(await request.text(), 2)
-#         # verify parameters exist
-#         if not data:
-#             logging.log(level = 9001, msg = "Bad download attempt in body from ip address " + request.headers['X-Real-IP'] + ' Body: ' + await request.text())
-#             return None
-#     else:
-#         # use parameters in url
-#         params = str(request.url).split('?')
-#         # verify url split properly
-#         match len(params):
-#             # if no parameters in request
-#             case 1:
-#                 logging.log(level = 9001, msg = "Download attempt by " +request.headers['X-Real-IP'] + " missing parameters Submitted URL: " +  str(request.url))
-#                 return None
-#             # if 1 set of parameters found
-#             case 2:
-#                 data = await parse_request(params[1], 3)
-#                 # verify parameters exist
-#                 if not data:
-#                     logging.log(level = 9001, msg = "Bad download attempt in body from ip address " + request.headers['X-Real-IP'] + ' URL: ' + str(request.url))
-#                     return None
-#             # some weird edge case preventer thing
-#             case _:
-#                 logging.log(level = 9001, msg = "Something weird came in url from ip address " + request.headers['X-Real-IP'] + ' URL: ' + str(request.url))
-#                 return None
-#     return data
