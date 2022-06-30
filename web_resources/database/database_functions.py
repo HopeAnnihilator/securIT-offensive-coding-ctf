@@ -1,4 +1,4 @@
-from pymongo import MongoClient, errors
+from pymongo import MongoClient
 from time import time, gmtime, strftime
 import json
 
@@ -80,7 +80,7 @@ class mongodb:
         self.client['timeouts'][ipAdd].replace_one({'method': method}, obj)
 
     async def add_new_timeout_object(self, ipAdd, method):
-        self.client['timeouts'][ipAdd].insert_one({'method': method, 'time': json.dumps([1, time()])})
+        self.client['timeouts'][ipAdd].insert_one({'method': method, 'time': [1, time()]})
     
     async def reset_timeout_object(self, ipAdd, method):
-        self.client['timeouts'][ipAdd].replace_one({'method': method, 'time': json.dumps([1, time()])})
+        self.client['timeouts'][ipAdd].replace_one({'method': method}, {'method': method, 'time': [1, time()]})
